@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resultate erfassen – v24 final</title>
+<style>
+body{margin:0;font-family:system-ui;background:#0b0f17;color:#e8eefc}
+header{position:sticky;top:0;background:#0b0f17cc;border-bottom:1px solid #222;z-index:5}
+.wrap{max-width:1200px;margin:auto;padding:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+button,select,input{background:#151c2e;border:1px solid #2a3555;color:#e8eefc;border-radius:10px;padding:8px 10px}
+button.primary{background:#2b4c8a}
+button.secondary{background:#1f2a44}
+button.danger{background:#5a2222}
+.card{background:#121a2a;border:1px solid #243055;border-radius:16px;margin-bottom:16px}
+.head{padding:12px;border-bottom:1px solid #243055;font-weight:600}
+.body{padding:12px}
+h3{margin:14px 0 6px;color:#9fb0e0}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
+th,td{padding:8px;border-bottom:1px solid #243055;text-align:left}
+th{color:#9fb0e0;font-size:11px;text-transform:uppercase}
+
+/* modal */
+.modalBack{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:10}
+.modal{background:#121a2a;border-radius:16px;border:1px solid #243055;width:520px;max-width:95%}
+.field{margin-bottom:10px}
+label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap row">
+    <strong>Resultate erfassen</strong>
+    <div class="spacer"></div>
+    <span>Jahr</span>
+    <select id="yearSelect"></select>
+    <button class="secondary" onclick="addYear()">+ Jahr</button>
+    <button class="primary" onclick="openModal()">+ Resultat</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card">
+    <div class="head">Dashboard – aktuelles Jahr</div>
+    <div class="body" id="dashYear"></div>
+  </div>
+
+  <div class="card">
+    <div class="head">Langzeitübersicht</div>
+    <div class="body" id="dashAll"></div>
+  </div>
+
+  <div class="card">
+    <div class="head row">
+      <span>Einträge</span>
+      <div class="spacer"></div>
+      <select id="entryFilter" onchange="renderEntries()">
+        <option value="all">Alle Disziplinen</option>
+        <option value="300m">300 m</option>
+        <option value="50m">50 m</option>
+        <option value="10m">10 m</option>
+      </select>
+    </div>
+    <div class="body" id="entries"></div>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modalBack" id="modal">
+  <div class="modal">
+    <div class="head">Neues Resultat</div>
+    <div class="body">
+      <div class="field"><label>Jahr</label><select id="mYear"></select></div>
+
+      <div class="field"><label>Disziplin (Wähle 300m / 50m / 10m)</label>
+        <select id="mDiscipline" onchange="updateEventSelect();updatePlaceList();">
+          <option value="">– bitte wählen –</option>
+          <option value="300m">300 m</option>
+          <option value="50m">50 m</option>
+          <option value="10m">10 m</option>
+        </select>
+      </div>
+
+      <div class="field"><label>Art (Wähle Wettkampf oder Training)</label>
+        <select id="mType">
+          <option value="">– bitte wählen –</option>
+          <option value="Wettkampf">Wettkampf</option>
+          <option value="Training">Training</option>
+        </select>
+      </div>
+
+      <div class="field"><label>Wettkampf (vorhanden)</label>
+        <select id="mEventSelect"><option value="">– auswählen –</option></select>
+      </div>
+
+      <div class="field"><label>Neuer Wettkampf</label>
+        <input id="mEventNew" placeholder="z. B. OP, FS, Volksschiessen">
+      </div>
+
+      <div class="field"><label>Schiessplatz</label>
+        <input id="mPlace" list="placeList" placeholder="neu eingeben oder auswählen">
+        <datalist id="placeList"></datalist>
+      </div>
+
+      <div class="field"><label>Resultat</label><input type="number" id="mRes"></div>
+
+      <div class="actions">
+        <button class="secondary" onclick="closeModal()">Abbrechen</button>
+        <button class="primary" onclick="save()">Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const START=2010;
+const NOW=new Date().getFullYear();
+const DISCIPLINES=["300m","50m","10m"];
+let state={years:[...Array(NOW-START+1)].map((_,i)=>START+i),entries:[]};
+let selectedYear=NOW;
+
+function avg(a){return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"—";}
+
+function addYear(){const n=Math.max(...state.years)+1;state.years.push(n);selectedYear=n;render();}
+
+function renderYears(){
+  yearSelect.innerHTML="";
+  state.years.forEach(y=>yearSelect.innerHTML+=`<option ${y===selectedYear?"selected":""}>${y}</option>`);
+  mYear.innerHTML=yearSelect.innerHTML;
+}
+
+function getEventsByDiscipline(d){return [...new Set(state.entries.filter(e=>e.discipline===d).map(e=>e.event))].sort();}
+function getPlacesByDiscipline(d){return [...new Set(state.entries.filter(e=>e.discipline===d&&e.place).map(e=>e.place))].sort();}
+
+function updateEventSelect(){
+  mEventSelect.innerHTML='<option value="">– auswählen –</option>';
+  const d=mDiscipline.value;if(!d)return;
+  getEventsByDiscipline(d).forEach(ev=>mEventSelect.innerHTML+=`<option>${ev}</option>`);
+}
+function updatePlaceList(){
+  placeList.innerHTML="";
+  const d=mDiscipline.value;if(!d)return;
+  getPlacesByDiscipline(d).forEach(p=>placeList.innerHTML+=`<option value="${p}">`);
+}
+
+function openModal(){renderYears();mDiscipline.value="";mType.value="";mEventSelect.innerHTML='<option value="">– auswählen –</option>';mEventNew.value="";mPlace.value="";mRes.value="";placeList.innerHTML="";modal.style.display="flex";}
+function closeModal(){modal.style.display="none";}
+
+function save(){
+  const event=mEventNew.value.trim()||mEventSelect.value;
+  if(!mDiscipline.value||!mType.value||!event||!mRes.value){alert("Bitte Disziplin, Art, Wettkampf und Resultat angeben.");return;}
+  state.entries.push({id:crypto.randomUUID(),year:+mYear.value,discipline:mDiscipline.value,type:mType.value,event,res:+mRes.value,place:mPlace.value});
+  // reset fields but keep modal open
+  mDiscipline.value="";
+  mType.value="";
+  mEventSelect.innerHTML='<option value="">– auswählen –</option>';
+  mEventNew.value="";
+  mPlace.value="";
+  mRes.value="";
+  placeList.innerHTML="";
+  render();
+}
+
+function deleteEntry(id){
+  if(!confirm("Eintrag wirklich löschen?")) return;
+  state.entries=state.entries.filter(e=>e.id!==id);
+  render();
+}
+
+function buildTable(arr){
+  if(!arr.length) return "<p>– keine Einträge –</p>";
+  const events=[...new Set(arr.map(e=>e.event))];
+  return `<table><tr><th>Wettkampf</th><th>Ø Wettkampf</th><th>Ø Training</th><th>Anzahl</th></tr>`+
+    events.map(ev=>{
+      const wc=arr.filter(e=>e.event===ev&&e.type==="Wettkampf").map(e=>e.res);
+      const tr=arr.filter(e=>e.event===ev&&e.type==="Training").map(e=>e.res);
+      return `<tr><td>${ev}</td><td>${avg(wc)}</td><td>${avg(tr)}</td><td>${arr.filter(e=>e.event===ev).length}</td></tr>`;
+    }).join("")+"</table>";
+}
+
+function renderEntries(){
+  entries.innerHTML="";
+  const filter=document.getElementById("entryFilter").value;
+  DISCIPLINES.forEach(d=>{
+    if(filter!=="all"&&filter!==d) return;
+    const list=state.entries.filter(e=>e.discipline===d).sort((a,b)=>b.year-a.year);
+    entries.innerHTML+=`<h3>${d}</h3>`;
+    if(!list.length){entries.innerHTML+="<p>– keine Einträge –</p>";return;}
+    entries.innerHTML+=`<table><tr><th>Jahr</th><th>Wettkampf</th><th>Art</th><th>Resultat</th><th>Schiessplatz</th><th></th></tr>`+
+      list.map(e=>`<tr>
+        <td>${e.year}</td><td>${e.event}</td><td>${e.type}</td><td>${e.res}</td><td>${e.place||""}</td>
+        <td><button class="danger" onclick="deleteEntry('${e.id}')">Löschen</button></td>
+      </tr>`).join("")+"</table>";
+  });
+}
+
+function render(){
+  renderYears();dashYear.innerHTML="";dashAll.innerHTML="";
+  DISCIPLINES.forEach(d=>{
+    const y=state.entries.filter(e=>e.year===selectedYear&&e.discipline===d);
+    const a=state.entries.filter(e=>e.discipline===d);
+    dashYear.innerHTML+=`<h3>${d}</h3>`+buildTable(y);
+    dashAll.innerHTML+=`<h3>${d}</h3>`+buildTable(a);
+  });
+  renderEntries();
+}
+
+yearSelect.onchange=e=>{selectedYear=+e.target.value;render();};
+render();
+</script>
+</body>
+</html>
