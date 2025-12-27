@@ -11,7 +11,7 @@ header{position:sticky;top:0;background:#0b0f17cc;border-bottom:1px solid #222;z
 .wrap{max-width:1200px;margin:auto;padding:16px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .spacer{flex:1}
-button,select,input{background:#151c2e;border:1px solid #2a3555;color:#e8eefc;border-radius:10px;padding:8px 10px}
+button,select,input{background:#151c2e;border:1px solid #2a3555;color:#e8eefc;border-radius:10px;padding:10px 12px}
 button.primary{background:#2b4c8a}
 button.secondary{background:#1f2a44}
 button.danger{background:#5a2222}
@@ -28,7 +28,18 @@ th{color:#9fb0e0;font-size:11px;text-transform:uppercase}
 .modal{background:#121a2a;border-radius:16px;border:1px solid #243055;width:520px;max-width:95%}
 .field{margin-bottom:10px}
 label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+
+/* buttons mobile friendly */
+.actions{
+  display:flex;
+  gap:12px;
+  justify-content:flex-start;
+  margin-top:16px;
+}
+.actions button{
+  flex:1;
+  font-size:15px;
+}
 </style>
 </head>
 
@@ -131,8 +142,8 @@ label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
       </div>
 
       <div class="actions">
-        <button class="secondary" onclick="closeModal()">Abbrechen</button>
         <button class="primary" onclick="save()">Speichern</button>
+        <button class="secondary" onclick="closeModal()">Abbrechen</button>
       </div>
 
     </div>
@@ -140,6 +151,7 @@ label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
 </div>
 
 <script>
+/* LOGIK UNVERÄNDERT – IDENTISCH ZU V27 */
 const START=2010;
 const NOW=new Date().getFullYear();
 const DISCIPLINES=["300m","50m","10m"];
@@ -154,71 +166,31 @@ let selectedYear = NOW;
 function persist(){ localStorage.setItem("resultateState", JSON.stringify(state)); }
 function avg(a){return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"—";}
 
-function addYear(){
-  const n=Math.max(...state.years)+1;
-  state.years.push(n);
-  selectedYear=n;
-  persist(); render();
-}
-
-function renderYears(){
-  yearSelect.innerHTML="";
-  state.years.forEach(y=>{
-    yearSelect.innerHTML+=`<option ${y===selectedYear?"selected":""}>${y}</option>`;
-  });
-  mYear.innerHTML=yearSelect.innerHTML;
-}
+function addYear(){const n=Math.max(...state.years)+1;state.years.push(n);selectedYear=n;persist();render();}
+function renderYears(){yearSelect.innerHTML="";state.years.forEach(y=>yearSelect.innerHTML+=`<option ${y===selectedYear?"selected":""}>${y}</option>`);mYear.innerHTML=yearSelect.innerHTML;}
 
 function getEvents(d){return [...new Set(state.entries.filter(e=>e.discipline===d).map(e=>e.event))].sort();}
-function getPlaces(d){return [...new Set(state.entries.filter(e=>e.discipline===d && e.place).map(e=>e.place))].sort();}
+function getPlaces(d){return [...new Set(state.entries.filter(e=>e.discipline===d&&e.place).map(e=>e.place))].sort();}
 
-function updateEventSelect(){
-  mEventSelect.innerHTML='<option value="">– auswählen –</option>';
-  getEvents(mDiscipline.value).forEach(e=>mEventSelect.innerHTML+=`<option>${e}</option>`);
-}
+function updateEventSelect(){mEventSelect.innerHTML='<option value="">– auswählen –</option>';getEvents(mDiscipline.value).forEach(e=>mEventSelect.innerHTML+=`<option>${e}</option>`);}
+function updatePlaceList(){placeList.innerHTML="";getPlaces(mDiscipline.value).forEach(p=>placeList.innerHTML+=`<option value="${p}">`);}
 
-function updatePlaceList(){
-  placeList.innerHTML="";
-  getPlaces(mDiscipline.value).forEach(p=>placeList.innerHTML+=`<option value="${p}">`);
-}
-
-function openModal(){
-  renderYears();
-  mDiscipline.value=""; mType.value="";
-  mEventSelect.innerHTML='<option value="">– auswählen –</option>';
-  mEventNew.value=""; mPlace.value=""; mRes.value="";
-  modal.style.display="flex";
-}
-
-function closeModal(){ modal.style.display="none"; }
+function openModal(){renderYears();mDiscipline.value="";mType.value="";mEventSelect.innerHTML='<option value="">– auswählen –</option>';mEventNew.value="";mPlace.value="";mRes.value="";modal.style.display="flex";}
+function closeModal(){modal.style.display="none";}
 
 function save(){
   const event=mEventNew.value.trim()||mEventSelect.value;
-  if(!mDiscipline.value||!mType.value||!event||!mRes.value){
-    alert("Bitte alle Pflichtfelder ausfüllen."); return;
-  }
-  state.entries.push({
-    id:crypto.randomUUID(),
-    year:+mYear.value,
-    discipline:mDiscipline.value,
-    type:mType.value,
-    event,
-    res:+mRes.value,
-    place:mPlace.value
-  });
+  if(!mDiscipline.value||!mType.value||!event||!mRes.value){alert("Bitte alle Pflichtfelder ausfüllen.");return;}
+  state.entries.push({id:crypto.randomUUID(),year:+mYear.value,discipline:mDiscipline.value,type:mType.value,event,res:+mRes.value,place:mPlace.value});
   persist();
-  mEventNew.value=""; mRes.value=""; mPlace.value="";
+  mEventNew.value="";mRes.value="";mPlace.value="";
   render();
 }
 
-function deleteEntry(id){
-  if(!confirm("Eintrag wirklich löschen?")) return;
-  state.entries = state.entries.filter(e=>e.id!==id);
-  persist(); render();
-}
+function deleteEntry(id){if(!confirm("Eintrag wirklich löschen?"))return;state.entries=state.entries.filter(e=>e.id!==id);persist();render();}
 
 function buildTable(arr){
-  if(!arr.length) return "<p>– keine Einträge –</p>";
+  if(!arr.length)return"<p>– keine Einträge –</p>";
   const ev=[...new Set(arr.map(e=>e.event))];
   return `<table>
     <tr><th>Wettkampf</th><th>Ø Wettkampf</th><th>Ø Training</th><th>Anzahl</th></tr>
@@ -234,7 +206,7 @@ function renderEntries(){
   entries.innerHTML="";
   const f=entryFilter.value;
   DISCIPLINES.forEach(d=>{
-    if(f!=="all"&&f!==d) return;
+    if(f!=="all"&&f!==d)return;
     const list=state.entries.filter(e=>e.discipline===d).sort((a,b)=>b.year-a.year);
     entries.innerHTML+=`<h3>${d}</h3>`;
     if(!list.length){entries.innerHTML+="<p>– keine Einträge –</p>";return;}
@@ -250,7 +222,7 @@ function renderEntries(){
 
 function render(){
   renderYears();
-  dashYear.innerHTML=""; dashAll.innerHTML="";
+  dashYear.innerHTML="";dashAll.innerHTML="";
   DISCIPLINES.forEach(d=>{
     dashYear.innerHTML+=`<h3>${d}</h3>`+buildTable(state.entries.filter(e=>e.year===selectedYear&&e.discipline===d));
     dashAll.innerHTML+=`<h3>${d}</h3>`+buildTable(state.entries.filter(e=>e.discipline===d));
@@ -268,21 +240,21 @@ function exportData(){
 
 function importData(){
   const i=document.createElement("input");
-  i.type="file"; i.accept=".json";
+  i.type="file";i.accept=".json";
   i.onchange=e=>{
     const r=new FileReader();
     r.onload=()=>{
       const d=JSON.parse(r.result);
       const merge=confirm("OK = Zusammenführen\\nAbbrechen = Ersetzen");
       state = merge ? {...state, entries:state.entries.concat(d.entries)} : d;
-      persist(); render();
+      persist();render();
     };
     r.readAsText(e.target.files[0]);
   };
   i.click();
 }
 
-yearSelect.onchange=e=>{selectedYear=+e.target.value; render();};
+yearSelect.onchange=e=>{selectedYear=+e.target.value;render();};
 render();
 </script>
 
