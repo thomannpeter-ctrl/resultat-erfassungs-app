@@ -1,4 +1,4 @@
-<!doctype html>  
+<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -26,12 +26,12 @@ th{color:#9fb0e0;font-size:11px;text-transform:uppercase}
 .modal{background:#121a2a;border-radius:16px;border:1px solid #243055;width:520px;max-width:95%}
 .field{margin-bottom:10px}
 label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
-.actions{display:flex;gap:12px;justify-content:flex-start;margin-top:16px}
+.actions{display:flex;gap:12px;margin-top:16px}
 .actions button{flex:1;font-size:15px}
 </style>
 </head>
-
 <body>
+
 <header>
   <div class="wrap row">
     <strong>Resultate erfassen</strong>
@@ -70,7 +70,7 @@ label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
       <div class="field"><label>Datum</label><input type="date" id="mDate"></div>
       <div class="field">
         <label>Disziplin</label>
-        <select id="mDiscipline" onchange="updateEventSelect();updatePlaceList();">
+        <select id="mDiscipline">
           <option value="">– bitte wählen –</option>
           <option value="300m">300 m</option>
           <option value="50m">50 m</option>
@@ -84,9 +84,8 @@ label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
           <option value="Training">Training</option>
         </select>
       </div>
-      <div class="field"><label>Wettkampf</label><select id="mEventSelect"><option value="">– auswählen –</option></select></div>
-      <div class="field"><label>Neuer Wettkampf</label><input id="mEventNew"></div>
-      <div class="field"><label>Schiessplatz</label><input id="mPlace" list="placeList"><datalist id="placeList"></datalist></div>
+      <div class="field"><label>Wettkampf</label><input id="mEventNew"></div>
+      <div class="field"><label>Schiessplatz</label><input id="mPlace"></div>
       <div class="field"><label>Resultat</label><input type="number" id="mRes"></div>
       <div class="actions">
         <button class="primary" onclick="save()">Speichern</button>
@@ -97,27 +96,71 @@ label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
 </div>
 
 <script>
-const START=2010, NOW=new Date().getFullYear(), DISCIPLINES=["300m","50m","10m"];
+const START=2010,NOW=new Date().getFullYear(),DISCIPLINES=["300m","50m","10m"];
 let state=JSON.parse(localStorage.getItem("resultateState"))||{years:[...Array(NOW-START+1)].map((_,i)=>START+i),entries:[]};
-let selectedYear=NOW;
-let editingId=null;
+let selectedYear=NOW,editingId=null;
 
 function persist(){localStorage.setItem("resultateState",JSON.stringify(state));}
 function avg(a){return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"—";}
 function addYear(){const n=Math.max(...state.years)+1;state.years.push(n);selectedYear=n;persist();render();}
 function renderYears(){yearSelect.innerHTML="";state.years.forEach(y=>yearSelect.innerHTML+=`<option ${y===selectedYear?"selected":""}>${y}</option>`);mYear.innerHTML=yearSelect.innerHTML;}
-function getEvents(d){return [...new Set(state.entries.filter(e=>e.discipline===d).map(e=>e.event))].sort();}
-function getPlaces(d){return [...new Set(state.entries.filter(e=>e.discipline===d&&e.place).map(e=>e.place))].sort();}
-function updateEventSelect(){mEventSelect.innerHTML='<option value="">– auswählen –</option>';getEvents(mDiscipline.value).forEach(e=>mEventSelect.innerHTML+=`<option>${e}</option>`);}
-function updatePlaceList(){placeList.innerHTML="";getPlaces(mDiscipline.value).forEach(p=>placeList.innerHTML+=`<option value="${p}">`);}
-function openModal(){editingId=null;renderYears();mDiscipline.value="";mType.value="";mEventSelect.innerHTML='<option value="">– auswählen –</option>';mEventNew.value="";mPlace.value="";mRes.value="";mDate.value="";modal.style.display="flex";}
+function openModal(){editingId=null;renderYears();mDiscipline.value="";mType.value="";mEventNew.value="";mPlace.value="";mRes.value="";mDate.value="";modal.style.display="flex";}
 function closeModal(){modal.style.display="none";}
 
-/* … dein bestehender Code bleibt unverändert … */
+function save(){
+  if(!mDiscipline.value||!mType.value||!mEventNew.value||!mRes.value||!mDate.value){alert("Bitte alle Pflichtfelder ausfüllen.");return;}
+  if(editingId){
+    const e=state.entries.find(x=>x.id===editingId);
+    Object.assign(e,{year:+mYear.value,date:mDate.value,discipline:mDiscipline.value,type:mType.value,event:mEventNew.value,res:+mRes.value,place:mPlace.value});
+    editingId=null;
+  }else{
+    state.entries.push({id:crypto.randomUUID(),year:+mYear.value,date:mDate.value,discipline:mDiscipline.value,type:mType.value,event:mEventNew.value,res:+mRes.value,place:mPlace.value});
+  }
+  persist();render();closeModal();
+}
 
-/* === HIER WIEDER EINGEFÜGT === */
-function sameEntry(a,b){
-  return a.year===b.year&&a.date===b.date&&a.discipline===b.discipline&&a.type===b.type&&a.event===b.event&&a.res===b.res&&a.place===b.place;
+function deleteEntry(id){if(!confirm("Eintrag wirklich löschen?"))return;state.entries=state.entries.filter(e=>e.id!==id);persist();render();}
+
+function buildTable(arr){
+  if(!arr.length)return"<p>– keine Einträge –</p>";
+  const ev=[...new Set(arr.map(e=>e.event))];
+  return `<table><tr><th>Wettkampf</th><th>Ø Wettkampf</th><th>Ø Training</th><th>Anzahl</th></tr>`+
+  ev.map(e=>{
+    const wc=arr.filter(x=>x.event===e&&x.type==="Wettkampf").map(x=>x.res);
+    const tr=arr.filter(x=>x.event===e&&x.type==="Training").map(x=>x.res);
+    return `<tr><td>${e}</td><td>${avg(wc)}</td><td>${avg(tr)}</td><td>${arr.filter(x=>x.event===e).length}</td></tr>`;
+  }).join("")+"</table>";
+}
+
+function renderEntries(){
+  entries.innerHTML="";
+  const f=entryFilter.value;
+  DISCIPLINES.forEach(d=>{
+    if(f!=="all"&&f!==d)return;
+    const list=state.entries.filter(e=>e.discipline===d);
+    entries.innerHTML+=`<h3>${d}</h3>`;
+    if(!list.length){entries.innerHTML+="<p>– keine Einträge –</p>";return;}
+    entries.innerHTML+=`<table><tr><th>Jahr</th><th>Datum</th><th>Wettkampf</th><th>Art</th><th>Resultat</th><th>Ort</th><th></th></tr>`+
+    list.map(e=>`<tr><td>${e.year}</td><td>${e.date}</td><td>${e.event}</td><td>${e.type}</td><td>${e.res}</td><td>${e.place||""}</td>
+    <td><button onclick="editEntry('${e.id}')">Bearbeiten</button> <button class="danger" onclick="deleteEntry('${e.id}')">Löschen</button></td></tr>`).join("")+"</table>";
+  });
+}
+
+function editEntry(id){
+  const e=state.entries.find(x=>x.id===id);
+  editingId=id;
+  renderYears();
+  Object.assign(mYear,{value:e.year});mDate.value=e.date;mDiscipline.value=e.discipline;mType.value=e.type;
+  mEventNew.value=e.event;mRes.value=e.res;mPlace.value=e.place||"";modal.style.display="flex";
+}
+
+function render(){
+  renderYears();dashYear.innerHTML="";dashAll.innerHTML="";
+  DISCIPLINES.forEach(d=>{
+    dashYear.innerHTML+=`<h3>${d}</h3>`+buildTable(state.entries.filter(e=>e.year===selectedYear&&e.discipline===d));
+    dashAll.innerHTML+=`<h3>${d}</h3>`+buildTable(state.entries.filter(e=>e.discipline===d));
+  });
+  renderEntries();
 }
 
 function exportData(){
@@ -134,24 +177,16 @@ function importData(){
   i.onchange=e=>{
     const r=new FileReader();
     r.onload=()=>{
-      const d=JSON.parse(r.result);
-      const merge=confirm("OK = Zusammenführen (ohne Duplikate)\nAbbrechen = Ersetzen");
-      if(!merge){
-        state=d;
-      }else{
-        d.entries.forEach(neu=>{
-          if(!state.entries.some(alt=>sameEntry(alt,neu))){
-            state.entries.push(neu);
-          }
-        });
-      }
+      state=JSON.parse(r.result);
       persist();render();
     };
     r.readAsText(e.target.files[0]);
   };
   i.click();
 }
-/* === ENDE WIEDEREINFÜGUNG === */
+
+yearSelect.onchange=e=>{selectedYear=+e.target.value;render();};
+render();
 </script>
 </body>
 </html>
