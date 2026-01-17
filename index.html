@@ -1,4 +1,4 @@
-<!doctype html> 
+<!doctype html>  
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -67,8 +67,6 @@ label{font-size:12px;color:#9fb0e0;display:block;margin-bottom:4px}
     <div class="head">Neues Resultat</div>
     <div class="body">
       <div class="field"><label>Jahr</label><select id="mYear"></select></div>
-
-      <!-- NEU: Datum -->
       <div class="field"><label>Datum</label><input type="date" id="mDate"></div>
 
       <div class="field">
@@ -123,18 +121,36 @@ function save(){
   state.entries.push({
     id:crypto.randomUUID(),
     year:+mYear.value,
-    date:mDate.value,   // NEU
+    date:mDate.value,
     discipline:mDiscipline.value,
     type:mType.value,
     event,
     res:+mRes.value,
     place:mPlace.value
   });
-  persist();render();
+  persist();
+  render();
+
+  /* NEU: Maske leeren nach Speichern */
+  mDiscipline.value="";
+  mType.value="";
+  mEventSelect.innerHTML='<option value="">– auswählen –</option>';
+  mEventNew.value="";
+  mPlace.value="";
+  mRes.value="";
+  mDate.value="";
 }
 
 function sameEntry(a,b){
   return a.year===b.year&&a.date===b.date&&a.discipline===b.discipline&&a.type===b.type&&a.event===b.event&&a.res===b.res&&a.place===b.place;
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="resultate_export_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
 }
 
 function importData(){
