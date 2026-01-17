@@ -168,6 +168,25 @@ function save(){
 
 function deleteEntry(id){if(!confirm("Eintrag wirklich löschen?"))return;state.entries=state.entries.filter(e=>e.id!==id);persist();render();}
 
+/* FEHLENDE FUNKTION – JETZT WIEDER DA */
+function buildTable(arr){
+  if(!arr.length)return"<p>– keine Einträge –</p>";
+  const ev=[...new Set(arr.map(e=>e.event))];
+  return `<table>
+    <tr><th>Wettkampf</th><th>Ø Wettkampf</th><th>Ø Training</th><th>Anzahl</th></tr>
+    ${ev.map(e=>{
+      const wc=arr.filter(x=>x.event===e&&x.type==="Wettkampf").map(x=>x.res);
+      const tr=arr.filter(x=>x.event===e&&x.type==="Training").map(x=>x.res);
+      return `<tr>
+        <td>${e}</td>
+        <td>${avg(wc)}</td>
+        <td>${avg(tr)}</td>
+        <td>${arr.filter(x=>x.event===e).length}</td>
+      </tr>`;
+    }).join("")}
+  </table>`;
+}
+
 function renderEntries(){
 entries.innerHTML="";const f=entryFilter.value;
 DISCIPLINES.forEach(d=>{
