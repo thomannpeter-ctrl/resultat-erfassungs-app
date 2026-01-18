@@ -103,6 +103,18 @@ function persist(){localStorage.setItem("resultateState",JSON.stringify(state));
 function avg(a){return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"—";}
 function addYear(){const n=Math.max(...state.years)+1;state.years.push(n);selectedYear=n;persist();render();}
 function renderYears(){yearSelect.innerHTML="";state.years.forEach(y=>yearSelect.innerHTML+=`<option ${y===selectedYear?"selected":""}>${y}</option>`);mYear.innerHTML=yearSelect.innerHTML;}
+yearSelect.onchange=e=>{selectedYear=+e.target.value;render();};
+
+function buildTable(arr){
+  if(!arr.length)return"<p>– keine Einträge –</p>";
+  const ev=[...new Set(arr.map(e=>e.event))];
+  return `<table><tr><th>Wettkampf</th><th>Ø Wettkampf</th><th>Ø Training</th><th>Anzahl</th></tr>
+  ${ev.map(e=>{
+    const wc=arr.filter(x=>x.event===e&&x.type==="Wettkampf").map(x=>x.res);
+    const tr=arr.filter(x=>x.event===e&&x.type==="Training").map(x=>x.res);
+    return `<tr><td>${e}</td><td>${avg(wc)}</td><td>${avg(tr)}</td><td>${arr.filter(x=>x.event===e).length}</td></tr>`;
+  }).join("")}</table>`;
+}
 
 function renderEntryFilter(){
   entryFilter.innerHTML='<option value="all">Alle</option>';
@@ -126,6 +138,30 @@ function updatePlaceList(){placeList.innerHTML="";getPlaces(mDiscipline.value).f
 
 function openModal(){editId=null;renderYears();mDiscipline.value="";mType.value="";mEventSelect.innerHTML='<option value="">– auswählen –</option>';mEventNew.value="";mPlace.value="";mRes.value="";mDate.value="";modal.style.display="flex";}
 function closeModal(){modal.style.display="none";}
+
+function editEntry(id){
+  const e=state.entries.find(x=>x.id===id);
+  if(!e)return;
+  editId=id;
+  renderYears();
+  mYear.value=e.year;
+  mDate.value=e.date;
+  mDiscipline.value=e.discipline;
+  updateEventSelect();
+  updatePlaceList();
+  mType.value=e.type;
+  mEventSelect.value=e.event;
+  mEventNew.value="";
+  mPlace.value=e.place||"";
+  mRes.value=e.res;
+  modal.style.display="flex";
+}
+
+function deleteEntry(id){
+  if(!confirm("Eintrag wirklich löschen?"))return;
+  state.entries=state.entries.filter(e=>e.id!==id);
+  persist();render();
+}
 
 function save(){
   const event=mEventNew.value.trim()||mEventSelect.value;
@@ -168,9 +204,37 @@ function renderEntries(){
   });
 }
 
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="resultate_export_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+}
+
+function importData(){
+  const i=document.createElement("input");
+  i.type="file";i.accept=".json";
+  i.onchange=e=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      state=JSON.parse(r.result);
+      persist();render();
+    };
+    r.readAsText(e.target.files[0]);
+  };
+  i.click();
+}
+
 function render(){
   renderYears();
   renderEntryFilter();
+  dashYear.innerHTML="";
+  dashAll.innerHTML="";
+  DISCIPLINES.forEach(d=>{
+    dashYear.innerHTML+=`<h3>${d}</h3>`+buildTable(state.entries.filter(e=>e.year===selectedYear&&e.discipline===d));
+    dashAll.innerHTML+=`<h3>${d}</h3>`+buildTable(state.entries.filter(e=>e.discipline===d));
+  });
   renderEntries();
 }
 render();
