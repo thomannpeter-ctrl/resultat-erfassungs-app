@@ -1,4 +1,4 @@
-<!doctype html>  
+<!doctype html>   
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -161,8 +161,15 @@ if(f!=="all"&&f!==d)return;
 const list=state.entries.filter(e=>e.discipline===d).sort((a,b)=>b.year-a.year);
 entries.innerHTML+=`<h3>${d}</h3>`;
 if(!list.length){entries.innerHTML+="<p>– keine Einträge –</p>";return;}
-entries.innerHTML+=`<table><tr><th>Datum</th><th>Wettkampf</th><th>Art</th><th>Resultat</th><th>Schiessplatz</th><th></th></tr>
-${list.map(e=>`<tr><td>${e.date}</td><td>${e.event}</td><td>${e.type}</td><td>${e.res}</td><td>${e.place||""}</td>
+entries.innerHTML+=`<table>
+<tr><th>Datum</th><th>Jahr</th><th>Wettkampf</th><th>Art</th><th>Resultat</th><th>Schiessplatz</th><th></th></tr>
+${list.map(e=>`<tr>
+<td>${e.date}</td>
+<td>${e.year}</td>
+<td>${e.event}</td>
+<td>${e.type}</td>
+<td>${e.res}</td>
+<td>${e.place||""}</td>
 <td>
 <button class="secondary" onclick="editEntry('${e.id}')">Ändern</button>
 <button class="danger" onclick="deleteEntry('${e.id}')">Löschen</button>
